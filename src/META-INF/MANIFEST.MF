@@ -1,0 +1,3 @@
+Manifest-Version: 1.0
+Main-Class: com.nonopichy.ma4tomp3.MA4toMP3
+
