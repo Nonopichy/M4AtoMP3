@@ -1,5 +1,6 @@
 package com.nonopichy.ma4tomp3;
 
+import java.io.*;
 import javafx.application.Application;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -10,14 +11,14 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
-
-import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
 public class MA4toMP3 extends Application {
     private File inputDirectory;
     private File outputDirectory;
+    public static int total;
+    public static int actual;
 
     @Override
     public void start(Stage primaryStage) {
@@ -37,17 +38,17 @@ public class MA4toMP3 extends Application {
 
         Button inputButton = new Button("Input Folder");
         inputButton.setOnAction(e -> selectInputFolder(primaryStage));
-        VBox.setMargin(inputButton, new javafx.geometry.Insets(10, 0, 0, 0)); // Adiciona margem acima do botão
+        VBox.setMargin(inputButton, new javafx.geometry.Insets(10, 0, 0, 0));
         imageBox.getChildren().add(inputButton);
 
         Button outputButton = new Button("Output Folder");
         outputButton.setOnAction(e -> selectOutputFolder(primaryStage));
-        VBox.setMargin(outputButton, new javafx.geometry.Insets(10, 0, 0, 0)); // Adiciona margem acima do botão
+        VBox.setMargin(outputButton, new javafx.geometry.Insets(10, 0, 0, 0));
         imageBox.getChildren().add(outputButton);
 
         Button convertButton = new Button("Start Conversion");
         convertButton.setOnAction(e -> convertFiles());
-        VBox.setMargin(convertButton, new javafx.geometry.Insets(10, 0, 0, 0)); // Adiciona margem acima do botão
+        VBox.setMargin(convertButton, new javafx.geometry.Insets(10, 0, 0, 0));
         imageBox.getChildren().add(convertButton);
 
         Scene scene = new Scene(root, 250, 300);
@@ -85,21 +86,41 @@ public class MA4toMP3 extends Application {
             String inputFilePath = file.getAbsolutePath();
             String outputFilePath = new File(outputDirectory, file.getName().replaceAll(".m4a$", ".mp3")).getAbsolutePath();
             commands.add("ffmpeg -i \"" + inputFilePath + "\" \"" + outputFilePath + "\"");
+            total++;
         }
 
         new Thread(() -> {
             for (String command : commands) {
                 try {
                     Process process = Runtime.getRuntime().exec(command);
+
+                    // Consome as saídas stdout e stderr para evitar bloqueio
+                    consumeStream(process.getInputStream());
+                    consumeStream(process.getErrorStream());
+
                     int exitCode = process.waitFor();
                     if (exitCode == 0) {
-                        System.out.println("Successfully converted: " + command);
+                        actual++;
+                        System.out.println("("+actual+"/"+total+") Successfully converted: " + command);
                     } else {
                         System.out.println("Error converting: " + command);
                     }
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
+            }
+        }).start();
+    }
+
+    private void consumeStream(InputStream inputStream) {
+        new Thread(() -> {
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    System.out.println(line);
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
             }
         }).start();
     }
